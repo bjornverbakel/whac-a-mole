@@ -34,7 +34,7 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
   late WebSocketChannel _channel;
   int _score = 0;
   int _highScore = 0;
-  int _clientIndex = -1; // Default to -1 until received from server
+  int _clientIndex = 1; // Start client index from 1
 
   @override
   void initState() {
@@ -50,20 +50,19 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
   }
 
   void _connectToServer() {
-    _channel = IOWebSocketChannel.connect('ws://192.168.131.182:4000');
-
+    print('Attempting to connect to WebSocket server...');
+    _channel = IOWebSocketChannel.connect('ws://localhost:4000');
     _channel.stream.listen((message) {
       final gameState = jsonDecode(message);
-
       setState(() {
-        _clientIndex = gameState['clientIndex'] ?? _clientIndex;
+        _backgroundColors.clear();
+        _backgroundColors.addAll(
+            List<Color>.from(gameState['backgroundColors'].map((color) => _colorFromString(color))));
         _score = gameState['score'];
         _highScore = gameState['highScore'];
-
-        // Ensure `_backgroundColors` has the correct number of elements
-        _backgroundColors = List<Color>.from(
-            gameState['backgroundColors'].map((color) => _colorFromString(color)));
+        _clientIndex = gameState['clientIndex'] ?? _clientIndex;
       });
+      print('Game state updated: $gameState');
     }, onError: (error) {
       print('WebSocket error: $error');
     }, onDone: () {
@@ -71,6 +70,7 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
     });
   }
 
+  // Convert string to color
   Color _colorFromString(String colorString) {
     switch (colorString) {
       case 'red':
@@ -82,16 +82,16 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
     }
   }
 
+  // Handle tap event
   void _handleTap() {
-    if (_clientIndex != -1 && _clientIndex < _backgroundColors.length) {
-      if (_backgroundColors[_clientIndex] == Colors.green) {
+    if (_clientIndex != -1 && _clientIndex <= _backgroundColors.length) {
+      // Check if the button is green
+      if (_backgroundColors[_clientIndex - 1] == Colors.green) { // Adjust index to match array position
         _channel.sink.add(jsonEncode({'index': _clientIndex}));
-        print('👆 Button $_clientIndex tapped');
-      } else {
-        print('❌ Button $_clientIndex is NOT green, tap ignored.');
+        print('Button $_clientIndex tapped');
       }
     } else {
-      print('⚠️ Invalid client index: $_clientIndex');
+      print('Invalid client index: $_clientIndex');
     }
   }
 
@@ -109,9 +109,10 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
       body: GestureDetector(
         onTap: _handleTap,
         child: Container(
-          color: (_clientIndex != -1 && _clientIndex < _backgroundColors.length)
-              ? _backgroundColors[_clientIndex]
-              : Colors.red, // Fallback to red if something is wrong
+          color:
+              (_clientIndex != -1 && _clientIndex <= _backgroundColors.length)
+                  ? _backgroundColors[_clientIndex - 1] // Adjust index to match array position
+                  : Colors.red, // Fallback to red if something is wrong
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,

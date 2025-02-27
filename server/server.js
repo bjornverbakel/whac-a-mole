@@ -8,10 +8,11 @@ let gameState = {
 };
 
 let clients = [];
+let interval = 2000; // change 1 button to green every interval (ms)
 
 server.on('connection', (ws) => {
   console.log('New client connected');
-  const clientIndex = clients.length;
+  const clientIndex = clients.length + 1; // Start client index from 1
   clients.push(ws);
   gameState.backgroundColors.push('red');
 
@@ -20,8 +21,9 @@ server.on('connection', (ws) => {
 
   ws.on('message', (message) => {
     const data = JSON.parse(message);
-    if (data.index !== undefined && gameState.backgroundColors[data.index] === 'green') {
-      gameState.backgroundColors[data.index] = 'red';
+    const index = data.index - 1; // Adjust index to match array position
+    if (index !== undefined && gameState.backgroundColors[index] === 'green') {
+      gameState.backgroundColors[index] = 'red';
       gameState.score++;
       if (gameState.score > gameState.highScore) {
         gameState.highScore = gameState.score;
@@ -33,15 +35,16 @@ server.on('connection', (ws) => {
     }
   });
 
+  // Remove client when they disconnect
   ws.on('close', () => {
     console.log('Client disconnected');
     clients = clients.filter((client) => client !== ws);
-    gameState.backgroundColors.splice(clientIndex, 1);
+    gameState.backgroundColors.splice(clientIndex - 1, 1); // Adjust index to match array position
     broadcast(JSON.stringify(gameState));
   });
 });
 
-// Function to broadcast messages to all connected clients
+// Broadcast messages to all connected clients
 function broadcast(message) {
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
@@ -50,15 +53,15 @@ function broadcast(message) {
   });
 }
 
-// Game logic: Randomly turn one button green every 2 seconds
+// Randomly turns one button green every 2 seconds
 setInterval(() => {
   if (clients.length > 0) {
     const newIndex = Math.floor(Math.random() * clients.length);
     gameState.backgroundColors = Array(clients.length).fill('red');
     gameState.backgroundColors[newIndex] = 'green';
-    console.log(`Button ${newIndex} turned green`);
+    console.log(`Button ${newIndex + 1} turned green`); // Adjust index for logging
     broadcast(JSON.stringify(gameState));
   }
-}, 2000);
+}, interval);
 
-console.log('WebSocket server running on ws://192.168.131.182:4000');
+console.log('WebSocket server running on ws://localhost:4000');
