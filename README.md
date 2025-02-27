@@ -11,6 +11,10 @@ This is a Whac-A-Mole game built with Flutter and WebSocket, that is played with
 - Randomly turns one button green every interval.
 - Tracks and displays the score and high score.
 
+## Demo
+
+![Demo](https://git.fhict.nl/I529052/tc3_whac-a-mole/-/blob/main/tc3_demo.gif)
+
 ## Installation
 
 ### Prerequisites
