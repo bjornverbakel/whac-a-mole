@@ -47,7 +47,7 @@ This is a Whac-A-Mole game built with Flutter and WebSocket, that is played with
    flutter run
    ```
 
-5. Update the WebSocket URL in main.dart if necessary:
+5. In case it cannot connect, update the WebSocket URL in main.dart and retry:
    ```sh
    _channel = IOWebSocketChannel.connect('ws://<your-server-ip>:4000');
     ```
