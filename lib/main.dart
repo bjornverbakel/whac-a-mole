@@ -16,12 +16,11 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      home: WhacAMoleGame(), // Sets the home screen to the WhacAMoleGame widget
+      home: WhacAMoleGame(), // Sets home screen to the WhacAMoleGame widget
     );
   }
 }
 
-// Manages state of the Whac-a-mole game
 class WhacAMoleGame extends StatefulWidget {
   const WhacAMoleGame({super.key});
 
@@ -31,12 +30,11 @@ class WhacAMoleGame extends StatefulWidget {
 
 // _WhacAMoleGameState is the state class for the WhacAMoleGame widget
 class _WhacAMoleGameState extends State<WhacAMoleGame> {
-  final List<Color> _backgroundColors = [Colors.red, Colors.red, Colors.red];
+  List<Color> _backgroundColors = [];
   late WebSocketChannel _channel;
   int _score = 0;
   int _highScore = 0;
-  int _deviceIndex = 0; // Index of the button this device controls
-  late Timer _timer;
+  int _clientIndex = -1; // Default to -1 until received from server
 
   @override
   void initState() {
@@ -52,20 +50,24 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
   }
 
   void _connectToServer() {
-    _channel = IOWebSocketChannel.connect('ws://192.168.1.100:4000');
+    _channel = IOWebSocketChannel.connect('ws://192.168.131.182:4000');
+
     _channel.stream.listen((message) {
       final gameState = jsonDecode(message);
+
       setState(() {
-        _backgroundColors[0] =
-            _colorFromString(gameState['backgroundColors'][0]);
-        _backgroundColors[1] =
-            _colorFromString(gameState['backgroundColors'][1]);
-        _backgroundColors[2] =
-            _colorFromString(gameState['backgroundColors'][2]);
+        _clientIndex = gameState['clientIndex'] ?? _clientIndex;
         _score = gameState['score'];
         _highScore = gameState['highScore'];
+
+        // Ensure `_backgroundColors` has the correct number of elements
+        _backgroundColors = List<Color>.from(
+            gameState['backgroundColors'].map((color) => _colorFromString(color)));
       });
-      print('Game state updated: $gameState');
+    }, onError: (error) {
+      print('WebSocket error: $error');
+    }, onDone: () {
+      print('WebSocket connection closed');
     });
   }
 
@@ -81,13 +83,19 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
   }
 
   void _handleTap() {
-    if (_backgroundColors[_deviceIndex] == Colors.green) {
-      _channel.sink.add(jsonEncode({'index': _deviceIndex}));
-      print('Button $_deviceIndex tapped');
+    if (_clientIndex != -1 && _clientIndex < _backgroundColors.length) {
+      if (_backgroundColors[_clientIndex] == Colors.green) {
+        _channel.sink.add(jsonEncode({'index': _clientIndex}));
+        print('👆 Button $_clientIndex tapped');
+      } else {
+        print('❌ Button $_clientIndex is NOT green, tap ignored.');
+      }
+    } else {
+      print('⚠️ Invalid client index: $_clientIndex');
     }
   }
 
-  // Function to load the high score from shared preferences
+  // Load the high score from shared preferences
   void _loadHighScore() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -101,14 +109,16 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
       body: GestureDetector(
         onTap: _handleTap,
         child: Container(
-          color: _backgroundColors[_deviceIndex],
+          color: (_clientIndex != -1 && _clientIndex < _backgroundColors.length)
+              ? _backgroundColors[_clientIndex]
+              : Colors.red, // Fallback to red if something is wrong
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   'Score: $_score', // Display the score
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 30,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -116,7 +126,7 @@ class _WhacAMoleGameState extends State<WhacAMoleGame> {
                 ),
                 Text(
                   'High Score: $_highScore', // Display the high score
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,

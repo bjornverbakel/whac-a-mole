@@ -1,46 +1,64 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server);
+const WebSocket = require('ws');
+const server = new WebSocket.Server({ port: 4000 });
 
 let gameState = {
-  backgroundColors: ['red', 'red', 'red'],
+  backgroundColors: [],
   score: 0,
   highScore: 0,
 };
 
-io.on('connection', (socket) => {
-  console.log('New client connected');
-  socket.emit('gameState', gameState);
+let clients = [];
 
-  socket.on('tap', (data) => {
-    const index = data.index;
-    if (gameState.backgroundColors[index] === 'green') {
-      gameState.backgroundColors[index] = 'red';
+server.on('connection', (ws) => {
+  console.log('New client connected');
+  const clientIndex = clients.length;
+  clients.push(ws);
+  gameState.backgroundColors.push('red');
+
+  // Send initial game state to the new client
+  ws.send(JSON.stringify({ ...gameState, clientIndex }));
+
+  ws.on('message', (message) => {
+    const data = JSON.parse(message);
+    if (data.index !== undefined && gameState.backgroundColors[data.index] === 'green') {
+      gameState.backgroundColors[data.index] = 'red';
       gameState.score++;
       if (gameState.score > gameState.highScore) {
         gameState.highScore = gameState.score;
       }
-      console.log(`Button ${index} tapped. Score: ${gameState.score}`);
-      io.emit('gameState', gameState);
+      console.log(`Button ${data.index} tapped. Score: ${gameState.score}`);
+
+      // Broadcast updated game state to all clients
+      broadcast(JSON.stringify(gameState));
     }
   });
 
-  socket.on('disconnect', () => {
+  ws.on('close', () => {
     console.log('Client disconnected');
+    clients = clients.filter((client) => client !== ws);
+    gameState.backgroundColors.splice(clientIndex, 1);
+    broadcast(JSON.stringify(gameState));
   });
 });
 
-// Periodically change a random button to green
-setInterval(() => {
-  const newIndex = Math.floor(Math.random() * 3);
-  gameState.backgroundColors = ['red', 'red', 'red'];
-  gameState.backgroundColors[newIndex] = 'green';
-  console.log(`Button ${newIndex} turned green`);
-  io.emit('gameState', gameState);
-}, 2000); // Change every 2 seconds
+// Function to broadcast messages to all connected clients
+function broadcast(message) {
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+}
 
-server.listen(4000, () => console.log('Server is running on port 4000'));
+// Game logic: Randomly turn one button green every 2 seconds
+setInterval(() => {
+  if (clients.length > 0) {
+    const newIndex = Math.floor(Math.random() * clients.length);
+    gameState.backgroundColors = Array(clients.length).fill('red');
+    gameState.backgroundColors[newIndex] = 'green';
+    console.log(`Button ${newIndex} turned green`);
+    broadcast(JSON.stringify(gameState));
+  }
+}, 2000);
+
+console.log('WebSocket server running on ws://192.168.131.182:4000');
