@@ -47,6 +47,11 @@ This is a Whac-A-Mole game built with Flutter and WebSocket, that is played with
    flutter run
    ```
 
+5. Update the WebSocket URL in main.dart if necessary:
+   ```sh
+   _channel = IOWebSocketChannel.connect('ws://<your-server-ip>:4000');
+    ```
+
 ## Usage
 
 - Open the Flutter app on multiple devices or emulators.
