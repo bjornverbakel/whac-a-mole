@@ -26,7 +26,7 @@ This is a Whac-A-Mole game built with Flutter and WebSocket, that is played with
 
 1. Clone the repository:
    ```sh
-   git clone https://github.com/yourusername/whac_a_mole.git
+   git clone https://git.fhict.nl/I529052/tc3_whac-a-mole.git
    cd whac_a_mole
    ```
 
