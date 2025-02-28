@@ -13,7 +13,7 @@ This is a Whac-A-Mole game built with Flutter and WebSocket, that is played with
 
 ## Demo
 
-![Demo](tc3_demo.gif)
+<img src="tc3_demo.gif" width='60%'>
 
 ## Installation
 
